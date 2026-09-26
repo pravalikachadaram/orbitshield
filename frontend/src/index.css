@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #02040a;
+  --panel: rgba(10, 18, 38, 0.65);
+  --panel-border: rgba(0, 229, 255, 0.18);
+  --cyan: #00e5ff;
+  --cyan-soft: #4dd0ff;
+  --violet: #7c4dff;
+  --pink: #ff3d81;
+  --green: #22ffb7;
+  --amber: #ffb347;
+  --red: #ff3860;
+  --text: #e6f1ff;
+  --muted: #8ba0c7;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .brand, .mono, .font-orbitron {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* Background animated glow and space effects */
+#space-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse at 20% 10%, #0a1a3a 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 90%, #1a0733 0%, transparent 40%),
+    linear-gradient(180deg, #01030a 0%, #02040d 100%);
+  pointer-events: none;
+}
+
+/* Glowing glass card styles */
+.orbit-card {
+  position: relative;
+  padding: 24px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.orbit-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(0,229,255,0.5), transparent 40%, rgba(124,77,255,0.4));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.orbit-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 229, 255, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 229, 255, 0.15);
+}
+
+/* Custom aerospace scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #040814;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.6);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinReverse {
+  to { transform: rotate(-360deg); }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 1.6s infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 40s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spinReverse 30s linear infinite;
+}
+
+/* Earth Hero Glow Orb */
+.earth-sphere {
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4fc3f7 0%, #1e88e5 25%, #0d47a1 55%, #001a3d 100%);
+  box-shadow: 0 0 120px rgba(0,229,255,0.35), inset -40px -40px 100px rgba(0,0,0,0.85), inset 30px 30px 80px rgba(120,200,255,0.25);
+}
+
+/* Leaflet dark theme adjustments */
+.leaflet-container {
+  background: #040814 !important;
+  font-family: inherit;
+}
+.leaflet-popup-content-wrapper {
+  background: #0a1226 !important;
+  color: #e6f1ff !important;
+  border: 1px solid var(--cyan) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 30px rgba(0, 229, 255, 0.25) !important;
+}
+.leaflet-popup-tip {
+  background: #0a1226 !important;
+}

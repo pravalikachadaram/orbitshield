@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: orbitshield-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: orbituser
+      POSTGRES_PASSWORD: orbitpassword
+      POSTGRES_DB: orbitshield_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbituser -d orbitshield_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: orbitshield-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://orbituser:orbitpassword@postgres:5432/orbitshield_db
+      - ENVIRONMENT=production
+      - SECRET_KEY=orbitshield-super-secret-key-hackathon-2026-orbital
+      - SPACE_TRACK_USERNAME=${SPACE_TRACK_USERNAME:-}
+      - SPACE_TRACK_PASSWORD=${SPACE_TRACK_PASSWORD:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: orbitshield-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+volumes:
+  postgres_data:
