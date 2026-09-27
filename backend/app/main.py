@@ -8,10 +8,14 @@ from app.services.orbital_data_service import orbital_data_service
 
 from sqlalchemy import text
 
-# Initialize Database Schema
-Base.metadata.create_all(bind=engine)
+# Initialize Database Schema safely (Vercel serverless compatible)
+def init_db_safely():
+    try:
+        Base.metadata.create_all(bind=engine)
+        ensure_schema()
+    except Exception as e:
+        print(f"Notice initializing database schema: {e}")
 
-# Ensure columns exist in SQLite if table was created in an older run
 def ensure_schema():
     try:
         with engine.connect() as conn:
@@ -28,14 +32,14 @@ def ensure_schema():
     except Exception as e:
         print(f"Schema update notice: {e}")
 
-ensure_schema()
+init_db_safely()
 
 # Seed initial catalog on startup
 try:
     with SessionLocal() as db:
         orbital_data_service.seed_initial_objects(db)
 except Exception as e:
-    print(f"Warning seeding database: {e}")
+    print(f"Notice seeding database: {e}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

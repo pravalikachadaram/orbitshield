@@ -1,9 +1,14 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
 
-# If postgresql URL starts with postgres://, replace with postgresql:// for SQLAlchemy compatibility
 db_url = settings.DATABASE_URL
+# Automatically handle Vercel serverless read-only filesystem
+if "VERCEL" in os.environ or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(".", os.W_OK):
+    if db_url.startswith("sqlite"):
+        db_url = "sqlite:////tmp/orbitshield.db"
+
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
@@ -11,14 +16,21 @@ connect_args = {}
 if db_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
-engine = create_engine(
-    db_url,
-    connect_args=connect_args,
-    pool_pre_ping=True
-)
+try:
+    engine = create_engine(
+        db_url,
+        connect_args=connect_args,
+        pool_pre_ping=True
+    )
+except Exception:
+    db_url = "sqlite:////tmp/orbitshield.db"
+    engine = create_engine(
+        db_url,
+        connect_args={"check_same_thread": False},
+        pool_pre_ping=True
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 Base = declarative_base()
 
 def get_db():
