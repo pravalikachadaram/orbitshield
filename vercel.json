@@ -1,38 +1,21 @@
 {
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
-    },
-    {
-      "source": "/api",
-      "destination": "/api/index.py"
+      "destination": "/api"
     },
     {
       "source": "/docs",
-      "destination": "/api/index.py"
+      "destination": "/api"
     },
     {
       "source": "/openapi.json",
-      "destination": "/api/index.py"
+      "destination": "/api"
     },
     {
-      "source": "/assets/(.*)",
-      "destination": "/assets/$1"
-    },
-    {
-      "source": "/shield.svg",
-      "destination": "/shield.svg"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "/favicon.ico"
-    },
-    {
-      "source": "/((?!api/|api$|docs|openapi\\.json|assets/|shield\\.svg|favicon\\.ico|.*\\.[a-zA-Z0-9]+$).*)",
+      "source": "/((?!api|docs|openapi\\.json|assets|shield\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ]
