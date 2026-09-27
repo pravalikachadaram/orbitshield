@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        "sqlite:///./orbitshield.db"  # Defaults to SQLite for immediate out-of-the-box local runs, switches to Postgres when configured
+        "sqlite:////tmp/orbitshield.db" if os.getenv("VERCEL") else "sqlite:///./orbitshield.db"
     )
     
     # Security / JWT

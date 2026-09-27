@@ -10,13 +10,13 @@ from app.services.ai_service import ai_service
 class ConjunctionService:
     """
     Orchestrates the Conjunction Analysis Pipeline:
-    1. Propagate both orbits across requested time window
+    1. Propagate target and candidate orbits across requested time window
     2. Sample positions and compute relative Euclidean distance
     3. Identify closest approach epoch (TCA) and miss distance
     4. Compute relative velocity at TCA
-    5. Evaluate deterministic risk index
+    5. Evaluate deterministic OrbitShield Risk Index — Prototype
     6. Generate response recommendations
-    7. Generate AI explanation layer
+    7. Generate AI explanation layer (or deterministic fallback)
     8. Persist to DB and trigger Alert if HIGH/CRITICAL
     """
 
@@ -30,14 +30,6 @@ class ConjunctionService:
         window_hours: int,
         start_time: datetime
     ) -> Tuple[float, float, datetime, float]:
-        """
-        Samples trajectories to locate Minimum Distance Point (closest approach)
-        Returns:
-            miss_distance_km: float
-            relative_velocity_km_s: float
-            tca_epoch: datetime
-            time_to_tca_hours: float
-        """
         sat1 = sgp4_service.parse_tle(sat1_tle1, sat1_tle2)
         sat2 = sgp4_service.parse_tle(sat2_tle1, sat2_tle2)
 
@@ -135,6 +127,8 @@ class ConjunctionService:
             data_mode=data_mode
         )
 
+        time_to_encounter_min = round(time_to_tca_h * 60.0, 1)
+
         # Persist Conjunction
         conjunction = Conjunction(
             primary_object_id=primary_obj.norad_id,
@@ -142,6 +136,7 @@ class ConjunctionService:
             closest_approach_km=miss_dist_km,
             relative_velocity_km_s=rel_vel_km_s,
             time_of_closest_approach=tca_dt,
+            time_to_encounter_min=time_to_encounter_min,
             analysis_window_hours=window_hours,
             risk_score=eval_result["risk_score"],
             risk_level=eval_result["risk_level"],
@@ -167,35 +162,42 @@ class ConjunctionService:
         )
         db.add(analysis)
 
-        # Create Alert if elevated / high / critical
-        alert_id = None
-        alert_created = False
-        if eval_result["risk_level"] in ["HIGH", "CRITICAL"]:
-            alert = Alert(
-                conjunction_id=conjunction.id,
-                severity=eval_result["risk_level"],
-                title=f"Conjunction Alert: {primary_obj.name} vs {secondary_obj.name}",
-                message=f"Critical close approach detected: {miss_dist_km:.2f} km at {rel_vel_km_s:.2f} km/s. Risk Score: {eval_result['risk_score']}.",
-                status="ACTIVE"
-            )
-            db.add(alert)
-            db.flush()
-            alert_id = alert.id
-            alert_created = True
+        # Create Timely Alert for the conjunction run
+        alert_title = f"{eval_result['risk_level']} Conjunction Alert: {primary_obj.name} vs {secondary_obj.name}"
+        alert_msg = (
+            f"Proximity encounter detected: {miss_dist_km:.2f} km miss distance at {rel_vel_km_s:.2f} km/s. "
+            f"TCA encounter in {time_to_encounter_min:.1f} min ({time_to_tca_h:.2f}h). "
+            f"OrbitShield Risk Index: {eval_result['risk_score']:.1f}/100 ({eval_result['risk_level']})."
+        )
+        alert = Alert(
+            conjunction_id=conjunction.id,
+            severity=eval_result["risk_level"],
+            title=alert_title,
+            message=alert_msg,
+            status="ACTIVE"
+        )
+        db.add(alert)
+        db.flush()
+        alert_id = alert.id
+        alert_created = True
 
         db.commit()
         db.refresh(conjunction)
 
         return {
             "conjunction_id": conjunction.id,
+            "target_norad_id": primary_obj.norad_id,
+            "object_norad_id": secondary_obj.norad_id,
             "primary_object": primary_obj,
             "secondary_object": secondary_obj,
             "closest_approach_km": miss_dist_km,
             "relative_velocity_km_s": rel_vel_km_s,
             "time_of_closest_approach": tca_dt,
+            "time_to_encounter_min": time_to_encounter_min,
             "time_to_encounter_hours": time_to_tca_h,
             "analysis_window_hours": window_hours,
             "risk_score": eval_result["risk_score"],
+            "risk_index": eval_result["risk_index"],
             "risk_level": eval_result["risk_level"],
             "risk_factors": eval_result["risk_factors"],
             "deterministic_explanation": eval_result["deterministic_explanation"],

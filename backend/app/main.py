@@ -6,8 +6,29 @@ from app.database.session import engine, Base, SessionLocal
 from app.api.endpoints import router as api_router
 from app.services.orbital_data_service import orbital_data_service
 
+from sqlalchemy import text
+
 # Initialize Database Schema
 Base.metadata.create_all(bind=engine)
+
+# Ensure columns exist in SQLite if table was created in an older run
+def ensure_schema():
+    try:
+        with engine.connect() as conn:
+            if engine.dialect.name == "sqlite":
+                res = conn.execute(text("PRAGMA table_info(conjunctions)")).fetchall()
+                cols = [r[1] for r in res]
+                if cols and "time_to_encounter_min" not in cols:
+                    conn.execute(text("ALTER TABLE conjunctions ADD COLUMN time_to_encounter_min FLOAT DEFAULT 0.0"))
+                res_a = conn.execute(text("PRAGMA table_info(alerts)")).fetchall()
+                cols_a = [r[1] for r in res_a]
+                if cols_a and "reviewed_at" not in cols_a:
+                    conn.execute(text("ALTER TABLE alerts ADD COLUMN reviewed_at TIMESTAMP"))
+                conn.commit()
+    except Exception as e:
+        print(f"Schema update notice: {e}")
+
+ensure_schema()
 
 # Seed initial catalog on startup
 try:

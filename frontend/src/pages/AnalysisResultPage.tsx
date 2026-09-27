@@ -99,28 +99,45 @@ export const AnalysisResultPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ALERT BANNER IF HIGH/CRITICAL */}
-      {analysis.alert_created && (
-        <div className="p-5 bg-rose-950/40 border border-rose-600/80 rounded-xl flex items-center justify-between shadow-[0_0_30px_rgba(255,56,96,0.2)]">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6 text-[#ff3860] flex-shrink-0 animate-pulse" />
-            <div>
-              <p className="text-sm font-orbitron font-bold text-rose-200 uppercase tracking-wide">
-                Critical Conjunction Screening Alert Generated
-              </p>
-              <p className="text-xs text-rose-300/80 font-rajdhani mt-0.5">
-                This close-approach geometry violates mission safety margins and is logged in the Alerts dispatch.
-              </p>
-            </div>
+      {/* TIMELY THREAT ALERT BANNER */}
+      <div className={`p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg border ${
+        analysis.risk_level === 'CRITICAL' || analysis.risk_level === 'HIGH'
+          ? 'bg-rose-950/50 border-rose-500/80 shadow-[0_0_30px_rgba(255,56,96,0.25)] text-rose-200'
+          : analysis.risk_level === 'MEDIUM'
+          ? 'bg-amber-950/50 border-amber-500/80 shadow-[0_0_30px_rgba(255,179,71,0.25)] text-amber-200'
+          : 'bg-cyan-950/50 border-cyan-500/80 shadow-[0_0_30px_rgba(0,229,255,0.2)] text-cyan-200'
+      }`}>
+        <div className="flex items-center gap-3">
+          <AlertTriangle className={`w-6 h-6 flex-shrink-0 animate-pulse ${
+            analysis.risk_level === 'CRITICAL' || analysis.risk_level === 'HIGH'
+              ? 'text-[#ff3860]'
+              : analysis.risk_level === 'MEDIUM'
+              ? 'text-[#ffb347]'
+              : 'text-[#00e5ff]'
+          }`} />
+          <div>
+            <p className="text-sm font-orbitron font-extrabold uppercase tracking-wide">
+              {analysis.risk_level} Timely Threat Alert Dispatched
+            </p>
+            <p className="text-xs font-mono opacity-90 mt-0.5">
+              Event #{analysis.conjunction_id.substring(0, 8)} • Miss Distance: {analysis.closest_approach_km.toFixed(2)} km • OrbitShield Risk: {analysis.risk_score.toFixed(1)}/100
+            </p>
           </div>
-          <button
-            onClick={() => navigate('/alerts')}
-            className="px-4 py-2 bg-rose-900/70 hover:bg-rose-800 text-rose-100 font-orbitron text-xs font-bold uppercase rounded-lg border border-rose-500 transition-colors shadow-lg"
-          >
-            View Alerts Queue →
-          </button>
         </div>
-      )}
+        <button
+          onClick={() => navigate('/alerts')}
+          className={`px-5 py-2.5 font-orbitron text-xs font-black uppercase rounded-lg border transition-all shadow-md flex items-center justify-center gap-2 self-start sm:self-auto hover:scale-105 ${
+            analysis.risk_level === 'CRITICAL' || analysis.risk_level === 'HIGH'
+              ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-[0_0_15px_rgba(255,56,96,0.5)]'
+              : analysis.risk_level === 'MEDIUM'
+              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_15px_rgba(255,179,71,0.5)]'
+              : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 border-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.5)]'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          <span>View in Timely Alerts Queue →</span>
+        </button>
+      </div>
 
       {/* TARGET OBJECTS COMPARISON CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -314,6 +331,35 @@ export const AnalysisResultPage: React.FC = () => {
         <p className="text-[10px] font-mono text-[#8ba0c7]">
           Notice: This recommendation is a decision-support output for the hackathon prototype and is not an operational spacecraft command.
         </p>
+      </div>
+
+      {/* INTERCONNECTED WORKFLOW BAR */}
+      <div className="orbit-card p-6 bg-gradient-to-r from-[#070e1c] via-[#0c162d] to-[#070e1c] border-cyan-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_30px_rgba(0,229,255,0.15)]">
+        <div className="space-y-1 text-center sm:text-left">
+          <span className="text-xs font-orbitron font-bold text-[#00e5ff] uppercase tracking-wider flex items-center gap-2 justify-center sm:justify-start">
+            <Bell className="w-4 h-4 text-cyan-400" />
+            Mission Pipeline: Timely Alerts Active
+          </span>
+          <p className="text-xs font-mono text-slate-300">
+            This conjunction analysis was recorded and converted into an operational alert.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          <button
+            onClick={() => navigate('/alerts')}
+            className="px-6 py-3 bg-gradient-to-r from-rose-500 via-pink-600 to-amber-500 hover:opacity-90 text-white font-orbitron font-bold text-xs uppercase tracking-wider rounded-xl shadow-[0_0_20px_rgba(255,56,96,0.4)] flex items-center gap-2 transition-all hover:scale-105"
+          >
+            <Bell className="w-4 h-4" />
+            <span>Open Timely Alerts Queue</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/analysis')}
+            className="px-5 py-3 bg-[#0d182b] hover:bg-[#132442] text-cyan-300 border border-cyan-500/30 font-orbitron text-xs uppercase rounded-xl transition-all"
+          >
+            Screen Another Target
+          </button>
+        </div>
       </div>
     </div>
   );

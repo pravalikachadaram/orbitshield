@@ -20,21 +20,48 @@ export interface SpaceObject {
 }
 
 export interface ConjunctionAnalysisRequest {
-  primary_object_id: string;
-  secondary_object_id: string;
-  analysis_window_hours: number;
+  primary_object_id?: string;
+  secondary_object_id?: string;
+  target_norad_id?: string;
+  analysis_window_hours?: number;
+  time_window_hours?: number;
+}
+
+export interface MonitoredSatellite {
+  id: string;
+  norad_id: string;
+  name: string;
+  object_type: string;
+  orbit_type?: string;
+  altitude_km?: number;
+  inclination_deg?: number;
+  period_min?: number;
+  source: string;
+  custom_label?: string;
+  tle_epoch?: string;
+  created_at: string;
+}
+
+export interface SatelliteRegisterRequest {
+  name?: string;
+  norad_id: string;
+  custom_label?: string;
 }
 
 export interface ConjunctionAnalysisResponse {
   conjunction_id: string;
+  target_norad_id?: string;
+  object_norad_id?: string;
   primary_object: SpaceObject;
   secondary_object: SpaceObject;
   closest_approach_km: number;
   relative_velocity_km_s: number;
   time_of_closest_approach: string;
+  time_to_encounter_min?: number;
   time_to_encounter_hours: number;
   analysis_window_hours: number;
   risk_score: number;
+  risk_index?: number;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   risk_factors: string[];
   deterministic_explanation: string;

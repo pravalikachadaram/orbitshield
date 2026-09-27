@@ -28,15 +28,41 @@ class SpaceObjectOut(SpaceObjectBase):
     class Config:
         from_attributes = True
 
+# Satellite Registration & Monitored Satellite
+class SatelliteRegisterRequest(BaseModel):
+    name: Optional[str] = None
+    norad_id: str
+    custom_label: Optional[str] = None
+
+class MonitoredSatelliteOut(BaseModel):
+    id: str
+    norad_id: str
+    name: str
+    object_type: str
+    orbit_type: Optional[str] = "LEO"
+    altitude_km: Optional[float] = None
+    inclination_deg: Optional[float] = None
+    period_min: Optional[float] = None
+    source: str
+    custom_label: Optional[str] = None
+    tle_epoch: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # Conjunction Analysis Request
 class ConjunctionAnalysisRequest(BaseModel):
-    primary_object_id: str = Field(..., description="NORAD ID of primary object")
-    secondary_object_id: str = Field(..., description="NORAD ID of secondary object")
-    analysis_window_hours: int = Field(24, ge=6, le=72, description="Analysis time window in hours (6, 12, 24, 48, 72)")
+    target_norad_id: Optional[str] = Field(None, description="Monitored target NORAD ID")
+    primary_object_id: Optional[str] = Field(None, description="Primary NORAD ID")
+    secondary_object_id: Optional[str] = Field(None, description="Secondary/Candidate NORAD ID")
+    time_window_hours: int = Field(24, ge=6, le=72, description="Analysis time window in hours (6, 12, 24, 48, 72)")
+    analysis_window_hours: Optional[int] = None
 
 # Risk Factors & Scoring
 class RiskEvaluation(BaseModel):
     risk_score: float
+    risk_index: float
     risk_level: str  # LOW, MEDIUM, HIGH, CRITICAL
     risk_factors: List[str]
     deterministic_explanation: str
@@ -45,14 +71,18 @@ class RiskEvaluation(BaseModel):
 # Full Conjunction Response
 class ConjunctionAnalysisResponse(BaseModel):
     conjunction_id: str
+    target_norad_id: str
+    object_norad_id: str
     primary_object: SpaceObjectOut
     secondary_object: SpaceObjectOut
     closest_approach_km: float
     relative_velocity_km_s: float
     time_of_closest_approach: datetime
+    time_to_encounter_min: float
     time_to_encounter_hours: float
     analysis_window_hours: int
     risk_score: float
+    risk_index: float
     risk_level: str
     risk_factors: List[str]
     deterministic_explanation: str
@@ -76,7 +106,9 @@ class ConjunctionHistoryItem(BaseModel):
     secondary_object_norad: str
     closest_approach_km: float
     relative_velocity_km_s: float
+    time_to_encounter_min: Optional[float] = 0.0
     risk_score: float
+    risk_index: float
     risk_level: str
     time_of_closest_approach: datetime
     data_mode: str
@@ -91,12 +123,14 @@ class AlertOut(BaseModel):
     message: str
     status: str
     created_at: datetime
+    reviewed_at: Optional[datetime] = None
     primary_object_name: Optional[str] = None
     primary_object_norad: Optional[str] = None
     secondary_object_name: Optional[str] = None
     secondary_object_norad: Optional[str] = None
     closest_approach_km: Optional[float] = None
     risk_score: Optional[float] = None
+    risk_index: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -124,6 +158,11 @@ class SystemStatusResponse(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    full_name: Optional[str] = "Flight Dynamics Officer"
 
 class Token(BaseModel):
     access_token: str

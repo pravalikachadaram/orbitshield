@@ -5,11 +5,21 @@ import {
   ConjunctionAnalysisResponse,
   ConjunctionHistoryItem,
   Alert,
-  SystemStatusResponse
+  SystemStatusResponse,
+  MonitoredSatellite,
+  SatelliteRegisterRequest
 } from '../types';
 
-// Use environment variable VITE_API_URL or fallback smoothly to current host port 8001
-const BASE_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8001` : 'http://localhost:8001');
+// If VITE_API_URL is explicitly set, use it. Otherwise, in browser production (non-localhost), use same-origin relative path, else default to http://localhost:8000 for local dev
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return ''; // Same-domain /api in production on Vercel
+  }
+  return 'http://localhost:8000';
+};
+
+const BASE_URL = getBaseUrl();
 
 const client = axios.create({
   baseURL: `${BASE_URL}/api`,
@@ -34,6 +44,20 @@ export const api = {
     const res = await client.post('/auth/login', { email, password });
     return res.data;
   },
+  registerUser: async (email: string, password: string, fullName?: string) => {
+    const res = await client.post('/auth/register', { email, password, full_name: fullName });
+    return res.data;
+  },
+
+  // Monitored Satellites
+  getMonitoredSatellites: async (): Promise<MonitoredSatellite[]> => {
+    const res = await client.get<MonitoredSatellite[]>('/monitored-satellites');
+    return res.data;
+  },
+  registerMonitoredSatellite: async (data: SatelliteRegisterRequest): Promise<MonitoredSatellite> => {
+    const res = await client.post<MonitoredSatellite>('/objects/register', data);
+    return res.data;
+  },
 
   // System
   getHealth: async () => {
@@ -51,6 +75,10 @@ export const api = {
     if (search) params.search = search;
     if (objectType && objectType !== 'ALL') params.object_type = objectType;
     const res = await client.get<SpaceObject[]>('/objects', { params });
+    return res.data;
+  },
+  createObject: async (data: SatelliteRegisterRequest): Promise<SpaceObject> => {
+    const res = await client.post<SpaceObject>('/objects', data);
     return res.data;
   },
   getObjectByNorad: async (noradId: string): Promise<SpaceObject> => {

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { Alert } from '../types';
-import { PageHeader, StatusBadge, RiskBadge, LoadingState, ErrorState, EmptyState } from '../components/Common';
+import { PageHeader, StatusBadge, RiskBadge, LoadingState, ErrorState, EmptyState, WorkflowPipeline } from '../components/Common';
 
 export const AlertsPage: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -72,6 +72,8 @@ export const AlertsPage: React.FC = () => {
           </div>
         }
       />
+
+      <WorkflowPipeline activeStep={4} />
 
       {loading ? (
         <LoadingState message="Querying active conjunction alert log..." />

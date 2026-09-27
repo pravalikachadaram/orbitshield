@@ -183,3 +183,64 @@ export const EmptyState: React.FC<{ title: string; description: string; action?:
     {action && <div className="mt-5">{action}</div>}
   </div>
 );
+
+// 6. WorkflowPipeline (Interconnected Step-by-Step Flow Indicator)
+export const WorkflowPipeline: React.FC<{ activeStep: 1 | 2 | 3 | 4 }> = ({ activeStep }) => {
+  return (
+    <div className="w-full bg-[#040814]/90 border border-cyan-500/25 rounded-xl p-3 sm:p-4 mb-6 shadow-[0_0_20px_rgba(0,229,255,0.08)]">
+      <div className="text-[10px] font-orbitron uppercase text-[#8ba0c7] tracking-widest mb-2.5 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-cyan-300 font-bold">
+          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          INTERCONNECTED MISSION PIPELINE
+        </span>
+        <span className="text-cyan-400 font-mono">PHASE {activeStep} OF 4</span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {[
+          { num: 1, label: '1. Mission Login', path: '/login', desc: 'Secure Auth & Token' },
+          { num: 2, label: '2. Satellite & Debris', path: '/monitor', desc: 'Catalog & Select Target' },
+          { num: 3, label: '3. Collision Engine', path: '/analysis', desc: 'SGP4 Encounter Run' },
+          { num: 4, label: '4. Timely Threat Alerts', path: '/alerts', desc: 'Dispatch & Review' },
+        ].map((s) => {
+          const isActive = s.num === activeStep;
+          const isPassed = s.num < activeStep;
+
+          return (
+            <a
+              key={s.num}
+              href={s.path}
+              className={cn(
+                'flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all block',
+                isActive
+                  ? 'bg-gradient-to-r from-cyan-950/90 to-blue-950/90 border-cyan-400 text-white shadow-[0_0_15px_rgba(0,229,255,0.3)] ring-1 ring-cyan-400/50'
+                  : isPassed
+                  ? 'bg-[#081220]/70 border-emerald-500/40 text-emerald-300 hover:border-emerald-400'
+                  : 'bg-[#060c18]/50 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-5 h-5 rounded-full flex items-center justify-center font-orbitron text-[10px] font-extrabold flex-shrink-0',
+                  isActive
+                    ? 'bg-cyan-500 text-slate-950 shadow-[0_0_8px_rgba(0,229,255,0.8)]'
+                    : isPassed
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-slate-800 text-slate-400'
+                )}
+              >
+                {s.num}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-orbitron font-bold uppercase truncate">{s.label}</p>
+                <span className="text-[9px] font-mono opacity-80 block truncate">
+                  {isActive ? 'CURRENT PHASE' : isPassed ? 'COMPLETED' : s.desc}
+                </span>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

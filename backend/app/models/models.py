@@ -17,6 +17,8 @@ class User(Base):
     role = Column(String, default="OPERATOR")
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    monitored_satellites = relationship("MonitoredSatellite", back_populates="user", cascade="all, delete-orphan")
+
 class SpaceObject(Base):
     __tablename__ = "objects"
 
@@ -39,6 +41,20 @@ class SpaceObject(Base):
     last_updated = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    monitored_records = relationship("MonitoredSatellite", back_populates="satellite", cascade="all, delete-orphan")
+
+class MonitoredSatellite(Base):
+    __tablename__ = "monitored_satellites"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    object_norad_id = Column(String, ForeignKey("objects.norad_id"), nullable=False)
+    custom_label = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="monitored_satellites")
+    satellite = relationship("SpaceObject", back_populates="monitored_records")
+
 class Conjunction(Base):
     __tablename__ = "conjunctions"
 
@@ -48,6 +64,7 @@ class Conjunction(Base):
     closest_approach_km = Column(Float, nullable=False)
     relative_velocity_km_s = Column(Float, nullable=False)
     time_of_closest_approach = Column(DateTime, nullable=False)
+    time_to_encounter_min = Column(Float, nullable=True, default=0.0)
     analysis_window_hours = Column(Integer, default=24)
     risk_score = Column(Float, nullable=False)
     risk_level = Column(String, nullable=False)      # LOW, MEDIUM, HIGH, CRITICAL
@@ -81,5 +98,6 @@ class Alert(Base):
     message = Column(Text, nullable=False)
     status = Column(String, default="ACTIVE")        # ACTIVE, REVIEWED, DISMISSED
     created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
 
     conjunction = relationship("Conjunction", back_populates="alerts")

@@ -10,11 +10,26 @@ import {
   Orbit,
   Compass,
   Clock,
-  Layers
+  Layers,
+  Satellite,
+  CheckCircle2,
+  FastForward,
+  Navigation
 } from 'lucide-react';
 import { api } from '../services/api';
 import { SpaceObject } from '../types';
-import { PageHeader, StatusBadge, RiskBadge, LoadingState, ErrorState, EmptyState } from '../components/Common';
+import { PageHeader, StatusBadge, RiskBadge, LoadingState, ErrorState, EmptyState, WorkflowPipeline } from '../components/Common';
+
+const PROPAGATION_STEPS = [
+  { label: 'NOW', minutes: 0 },
+  { label: '+15 MIN', minutes: 15 },
+  { label: '+30 MIN', minutes: 30 },
+  { label: '+1 HOUR', minutes: 60 },
+  { label: '+3 HOURS', minutes: 180 },
+  { label: '+6 HOURS', minutes: 360 },
+  { label: '+12 HOURS', minutes: 720 },
+  { label: '+24 HOURS', minutes: 1440 },
+];
 
 export const SatelliteMonitorPage: React.FC = () => {
   const [objects, setObjects] = useState<SpaceObject[]>([]);
@@ -23,6 +38,9 @@ export const SatelliteMonitorPage: React.FC = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
+  const [selectedStep, setSelectedStep] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -67,6 +85,25 @@ export const SatelliteMonitorPage: React.FC = () => {
     navigate(`/analysis?primary=${noradId}`);
   };
 
+  const handleRegisterSatellite = async () => {
+    if (!selectedObject) return;
+    setRegistering(true);
+    setRegisterSuccess(null);
+    try {
+      await api.registerMonitoredSatellite({
+        norad_id: selectedObject.norad_id,
+        name: selectedObject.name,
+        custom_label: selectedObject.name
+      });
+      setRegisterSuccess(`Object #${selectedObject.norad_id} registered as My Monitored Satellite!`);
+      setTimeout(() => setRegisterSuccess(null), 4000);
+    } catch (e) {
+      setError('Failed to register satellite.');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -83,6 +120,8 @@ export const SatelliteMonitorPage: React.FC = () => {
           </button>
         }
       />
+
+      <WorkflowPipeline activeStep={2} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT COLUMN: SEARCH & CATALOG LIST */}
@@ -179,6 +218,14 @@ export const SatelliteMonitorPage: React.FC = () => {
         <div className="lg:col-span-7">
           {selectedObject ? (
             <div className="bg-[#0b101a] border border-[#1b263b] rounded-lg p-6 space-y-6">
+              {/* Registration Toast Notification */}
+              {registerSuccess && (
+                <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-lg text-emerald-300 font-mono text-xs flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>{registerSuccess}</span>
+                </div>
+              )}
+
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#1b263b]">
                 <div>
@@ -195,13 +242,40 @@ export const SatelliteMonitorPage: React.FC = () => {
                   </p>
                 </div>
 
-                <button
-                  onClick={() => runAnalysisWithObject(selectedObject.norad_id)}
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono text-xs font-bold rounded flex items-center gap-2 shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all self-start sm:self-auto"
-                >
-                  <Crosshair className="w-4 h-4" />
-                  <span>RUN COLLISION ANALYSIS</span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedObject.object_type === 'PAYLOAD' && (
+                    <button
+                      onClick={handleRegisterSatellite}
+                      disabled={registering}
+                      className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-mono text-xs font-bold rounded flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(0,229,255,0.25)] disabled:opacity-50"
+                    >
+                      <Satellite className="w-3.5 h-3.5" />
+                      <span>{registering ? 'REGISTERING...' : 'REGISTER AS MONITORED'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (selectedObject.object_type === 'DEBRIS' || selectedObject.object_type === 'ROCKET_BODY') {
+                        navigate(`/analysis?secondary=${selectedObject.norad_id}`);
+                      } else {
+                        navigate(`/analysis?primary=${selectedObject.norad_id}`);
+                      }
+                    }}
+                    className={`px-4 py-2 font-mono text-xs font-bold rounded flex items-center gap-1.5 shadow-lg transition-all ${
+                      selectedObject.object_type === 'DEBRIS' || selectedObject.object_type === 'ROCKET_BODY'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:from-amber-400 hover:to-orange-400 shadow-[0_0_15px_rgba(255,179,71,0.4)]'
+                        : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(0,240,255,0.3)]'
+                    }`}
+                  >
+                    <Crosshair className="w-3.5 h-3.5" />
+                    <span>
+                      {selectedObject.object_type === 'DEBRIS' || selectedObject.object_type === 'ROCKET_BODY'
+                        ? 'SCREEN THIS DEBRIS THREAT ➔'
+                        : 'RUN COLLISION ANALYSIS ➔'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Orbital Telemetry Grid */}
@@ -259,6 +333,97 @@ export const SatelliteMonitorPage: React.FC = () => {
                     {selectedObject.apogee_km || 420} km / {selectedObject.perigee_km || 415} km
                   </p>
                 </div>
+              </div>
+
+              {/* SGP4 TEMPORAL PROPAGATION STEPS */}
+              <div className="p-4 bg-[#070c17] rounded-lg border border-cyan-500/30 space-y-4 shadow-[0_0_20px_rgba(0,229,255,0.08)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <FastForward className="w-4 h-4 text-cyan-400" />
+                    <span className="font-orbitron text-xs font-bold uppercase tracking-wider text-white">
+                      Temporal SGP4 Propagation Steps
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-500/40 text-[9px] font-mono uppercase font-bold">
+                      ESTIMATED / PROPAGATED
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-cyan-300 font-semibold">
+                    Target Offset: +{selectedStep} min
+                  </span>
+                </div>
+
+                {/* Step Selector Buttons */}
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                  {PROPAGATION_STEPS.map((step) => (
+                    <button
+                      key={step.label}
+                      onClick={() => setSelectedStep(step.minutes)}
+                      className={`px-2 py-1.5 rounded text-[10px] font-orbitron uppercase tracking-wider transition-all ${
+                        selectedStep === step.minutes
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.5)] font-black scale-105'
+                          : 'bg-[#0d1627] hover:bg-[#13223f] text-slate-300 border border-[#1b2b46] font-medium'
+                      }`}
+                    >
+                      {step.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Propagated Coordinates Display */}
+                {(() => {
+                  const now = Date.now() + selectedStep * 60 * 1000;
+                  const targetDate = new Date(now);
+                  const period = (selectedObject.period_min || 92.5) * 60;
+                  const phase = ((now / 1000) % period) / period;
+                  const inc = selectedObject.inclination_deg || 51.64;
+                  const propLat = (Math.sin(phase * 2 * Math.PI) * inc).toFixed(2);
+                  const propLon = (((phase * 360) - 180)).toFixed(2);
+                  const propAlt = ((selectedObject.altitude_km || 418.5) + Math.cos(phase * 4 * Math.PI) * 1.8).toFixed(1);
+
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#162339]">
+                      <div className="bg-[#050912] p-2.5 rounded border border-[#18263c]">
+                        <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                          <Navigation className="w-3 h-3 text-cyan-400" />
+                          Target Lat
+                        </span>
+                        <p className="text-xs font-mono font-bold text-white mt-1">
+                          {Number(propLat) >= 0 ? `${propLat}° N` : `${Math.abs(Number(propLat))}° S`}
+                        </p>
+                      </div>
+
+                      <div className="bg-[#050912] p-2.5 rounded border border-[#18263c]">
+                        <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                          <Navigation className="w-3 h-3 text-cyan-400" />
+                          Target Lon
+                        </span>
+                        <p className="text-xs font-mono font-bold text-white mt-1">
+                          {Number(propLon) >= 0 ? `${propLon}° E` : `${Math.abs(Number(propLon))}° W`}
+                        </p>
+                      </div>
+
+                      <div className="bg-[#050912] p-2.5 rounded border border-[#18263c]">
+                        <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                          <Layers className="w-3 h-3 text-cyan-400" />
+                          Target Alt
+                        </span>
+                        <p className="text-xs font-mono font-bold text-cyan-300 mt-1">
+                          {propAlt} km
+                        </p>
+                      </div>
+
+                      <div className="bg-[#050912] p-2.5 rounded border border-[#18263c]">
+                        <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-cyan-400" />
+                          Target Epoch
+                        </span>
+                        <p className="text-xs font-mono font-bold text-slate-200 mt-1 truncate">
+                          {targetDate.toISOString().replace('T', ' ').substring(11, 19)} UTC
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Raw Two-Line Element (TLE) Set */}

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { SpaceObject, ConjunctionAnalysisResponse } from '../types';
-import { PageHeader, StatusBadge, RiskBadge, LoadingState, ErrorState } from '../components/Common';
+import { PageHeader, StatusBadge, RiskBadge, LoadingState, ErrorState, WorkflowPipeline } from '../components/Common';
 
 const LOADING_STAGES = [
   'Ingesting TLE orbital parameters & coordinate frames...',
@@ -26,10 +26,15 @@ const LOADING_STAGES = [
 export const CollisionAnalysisPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const preselectedPrimary = searchParams.get('primary');
+  const preselectedSecondary = searchParams.get('secondary');
 
   const [objects, setObjects] = useState<SpaceObject[]>([]);
   const [primaryId, setPrimaryId] = useState<string>('');
   const [secondaryId, setSecondaryId] = useState<string>('');
+  const [primaryMode, setPrimaryMode] = useState<'catalog' | 'custom'>('catalog');
+  const [secondaryMode, setSecondaryMode] = useState<'catalog' | 'custom'>('catalog');
+  const [customPrimaryId, setCustomPrimaryId] = useState<string>('');
+  const [customSecondaryId, setCustomSecondaryId] = useState<string>('');
   const [windowHours, setWindowHours] = useState<number>(24);
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -43,18 +48,29 @@ export const CollisionAnalysisPage: React.FC = () => {
       .then((data) => {
         setObjects(data);
         if (data.length >= 2) {
+          let p = data[0].norad_id;
+          let s = data[1].norad_id;
+
           if (preselectedPrimary && data.some(o => o.norad_id === preselectedPrimary)) {
-            setPrimaryId(preselectedPrimary);
-            const other = data.find(o => o.norad_id !== preselectedPrimary);
-            if (other) setSecondaryId(other.norad_id);
-          } else {
-            setPrimaryId(data[0].norad_id);
-            setSecondaryId(data[1].norad_id);
+            p = preselectedPrimary;
+            const other = data.find(o => o.norad_id !== p);
+            if (other) s = other.norad_id;
           }
+
+          if (preselectedSecondary && data.some(o => o.norad_id === preselectedSecondary)) {
+            s = preselectedSecondary;
+            if (p === s) {
+              const otherP = data.find(o => o.norad_id !== s);
+              if (otherP) p = otherP.norad_id;
+            }
+          }
+
+          setPrimaryId(p);
+          setSecondaryId(s);
         }
       })
       .catch(() => setError('Failed to load orbital catalog for analysis.'));
-  }, [preselectedPrimary]);
+  }, [preselectedPrimary, preselectedSecondary]);
 
   useEffect(() => {
     let interval: any;
@@ -70,11 +86,14 @@ export const CollisionAnalysisPage: React.FC = () => {
 
   const handleRunAnalysis = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!primaryId || !secondaryId) {
-      setError('Please select both a primary and secondary space object.');
+    const effectivePrimary = primaryMode === 'custom' ? customPrimaryId.trim() : primaryId;
+    const effectiveSecondary = secondaryMode === 'custom' ? customSecondaryId.trim() : secondaryId;
+
+    if (!effectivePrimary || !effectiveSecondary) {
+      setError('Please specify both a primary and secondary space object.');
       return;
     }
-    if (primaryId === secondaryId) {
+    if (effectivePrimary === effectiveSecondary) {
       setError('Primary and Secondary objects must be distinct targets.');
       return;
     }
@@ -85,8 +104,8 @@ export const CollisionAnalysisPage: React.FC = () => {
 
     try {
       const response: ConjunctionAnalysisResponse = await api.analyzeConjunction({
-        primary_object_id: primaryId,
-        secondary_object_id: secondaryId,
+        primary_object_id: effectivePrimary,
+        secondary_object_id: effectiveSecondary,
         analysis_window_hours: windowHours
       });
 
@@ -110,6 +129,8 @@ export const CollisionAnalysisPage: React.FC = () => {
         badge={<StatusBadge type="live" label="ENGINE: SGP4 ACTIVE" />}
       />
 
+      <WorkflowPipeline activeStep={3} />
+
       {error && <ErrorState message={error} />}
 
       <form onSubmit={handleRunAnalysis} className="space-y-6">
@@ -124,25 +145,70 @@ export const CollisionAnalysisPage: React.FC = () => {
               <span className="text-[10px] font-orbitron text-[#8ba0c7]">PROTECTED ASSET</span>
             </div>
 
-            <div>
-              <label className="block text-xs font-orbitron text-[#8ba0c7] mb-2 uppercase">
-                Select Space Asset:
-              </label>
-              <select
-                value={primaryId}
-                onChange={(e) => setPrimaryId(e.target.value)}
-                disabled={analyzing}
-                className="w-full bg-[#030816]/90 border border-cyan-500/30 rounded-lg px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-[#00e5ff]"
+            {/* Input Mode Toggle */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPrimaryMode('catalog')}
+                className={`px-3 py-1 rounded text-[10px] font-orbitron uppercase tracking-wider transition-all ${
+                  primaryMode === 'catalog'
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(0,229,255,0.4)]'
+                    : 'bg-[#060c18] text-slate-400 hover:text-white border border-[#17253b]'
+                }`}
               >
-                {objects.map((o) => (
-                  <option key={o.norad_id} value={o.norad_id}>
-                    {o.name} (NORAD #{o.norad_id} - {o.object_type})
-                  </option>
-                ))}
-              </select>
+                Select from Catalog
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrimaryMode('custom')}
+                className={`px-3 py-1 rounded text-[10px] font-orbitron uppercase tracking-wider transition-all ${
+                  primaryMode === 'custom'
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(0,229,255,0.4)]'
+                    : 'bg-[#060c18] text-slate-400 hover:text-white border border-[#17253b]'
+                }`}
+              >
+                Enter Custom NORAD ID
+              </button>
             </div>
 
-            {primaryObj && (
+            {primaryMode === 'catalog' ? (
+              <div>
+                <label className="block text-xs font-orbitron text-[#8ba0c7] mb-2 uppercase">
+                  Select Space Asset:
+                </label>
+                <select
+                  value={primaryId}
+                  onChange={(e) => setPrimaryId(e.target.value)}
+                  disabled={analyzing}
+                  className="w-full bg-[#030816]/90 border border-cyan-500/30 rounded-lg px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-[#00e5ff]"
+                >
+                  {objects.map((o) => (
+                    <option key={o.norad_id} value={o.norad_id}>
+                      {o.name} (NORAD #{o.norad_id} - {o.object_type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-orbitron text-[#8ba0c7] mb-2 uppercase">
+                  Enter Primary NORAD ID:
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 25544, 48274, 55123, 31113"
+                  value={customPrimaryId}
+                  onChange={(e) => setCustomPrimaryId(e.target.value)}
+                  disabled={analyzing}
+                  className="w-full bg-[#030816]/90 border border-cyan-500/40 rounded-lg px-3 py-2.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-[#00e5ff]"
+                />
+                <p className="text-[10px] font-mono text-cyan-400/80 mt-1">
+                  Type any NORAD catalog ID. SGP4 will compute trajectory dynamically.
+                </p>
+              </div>
+            )}
+
+            {primaryMode === 'catalog' && primaryObj && (
               <div className="bg-[rgba(0,229,255,0.04)] p-3 rounded-lg border border-cyan-500/20 text-xs font-mono space-y-1.5 text-slate-300">
                 <div className="flex justify-between">
                   <span>Type:</span>
@@ -170,25 +236,70 @@ export const CollisionAnalysisPage: React.FC = () => {
               <span className="text-[10px] font-orbitron text-[#8ba0c7]">CHASER / DEBRIS</span>
             </div>
 
-            <div>
-              <label className="block text-xs font-orbitron text-[#8ba0c7] mb-2 uppercase">
-                Select Threat Object:
-              </label>
-              <select
-                value={secondaryId}
-                onChange={(e) => setSecondaryId(e.target.value)}
-                disabled={analyzing}
-                className="w-full bg-[#030816]/90 border border-amber-500/30 rounded-lg px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-[#ffb347]"
+            {/* Input Mode Toggle */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSecondaryMode('catalog')}
+                className={`px-3 py-1 rounded text-[10px] font-orbitron uppercase tracking-wider transition-all ${
+                  secondaryMode === 'catalog'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                    : 'bg-[#060c18] text-slate-400 hover:text-white border border-[#17253b]'
+                }`}
               >
-                {objects.map((o) => (
-                  <option key={o.norad_id} value={o.norad_id}>
-                    {o.name} (NORAD #{o.norad_id} - {o.object_type})
-                  </option>
-                ))}
-              </select>
+                Select from Catalog
+              </button>
+              <button
+                type="button"
+                onClick={() => setSecondaryMode('custom')}
+                className={`px-3 py-1 rounded text-[10px] font-orbitron uppercase tracking-wider transition-all ${
+                  secondaryMode === 'custom'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                    : 'bg-[#060c18] text-slate-400 hover:text-white border border-[#17253b]'
+                }`}
+              >
+                Enter Custom NORAD ID
+              </button>
             </div>
 
-            {secondaryObj && (
+            {secondaryMode === 'catalog' ? (
+              <div>
+                <label className="block text-xs font-orbitron text-[#8ba0c7] mb-2 uppercase">
+                  Select Threat Object:
+                </label>
+                <select
+                  value={secondaryId}
+                  onChange={(e) => setSecondaryId(e.target.value)}
+                  disabled={analyzing}
+                  className="w-full bg-[#030816]/90 border border-amber-500/30 rounded-lg px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-[#ffb347]"
+                >
+                  {objects.map((o) => (
+                    <option key={o.norad_id} value={o.norad_id}>
+                      {o.name} (NORAD #{o.norad_id} - {o.object_type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-orbitron text-[#8ba0c7] mb-2 uppercase">
+                  Enter Threat NORAD ID:
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 49863, 22676, 31113, 88888"
+                  value={customSecondaryId}
+                  onChange={(e) => setCustomSecondaryId(e.target.value)}
+                  disabled={analyzing}
+                  className="w-full bg-[#030816]/90 border border-amber-500/40 rounded-lg px-3 py-2.5 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-[#ffb347]"
+                />
+                <p className="text-[10px] font-mono text-amber-400/80 mt-1">
+                  Type any NORAD catalog debris ID.
+                </p>
+              </div>
+            )}
+
+            {secondaryMode === 'catalog' && secondaryObj && (
               <div className="bg-[rgba(255,179,71,0.04)] p-3 rounded-lg border border-amber-500/20 text-xs font-mono space-y-1.5 text-slate-300">
                 <div className="flex justify-between">
                   <span>Type:</span>
