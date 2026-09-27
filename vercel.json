@@ -1,6 +1,7 @@
 {
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -19,7 +20,19 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/(.*)",
+      "source": "/assets/(.*)",
+      "destination": "/assets/$1"
+    },
+    {
+      "source": "/shield.svg",
+      "destination": "/shield.svg"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/favicon.ico"
+    },
+    {
+      "source": "/((?!assets/|shield\\.svg|favicon\\.ico|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ]
