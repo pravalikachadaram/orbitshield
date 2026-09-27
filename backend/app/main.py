@@ -67,9 +67,22 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "An internal aerospace calculation or system error occurred. Please verify telemetry inputs."}
     )
 
+@app.middleware("http")
+async def vercel_path_rewrite(request: Request, call_next):
+    path = request.scope.get("path", "")
+    for prefix in ["/api/index.py", "/index.py"]:
+        if path.startswith(prefix):
+            remainder = path[len(prefix):]
+            if not remainder.startswith("/"):
+                remainder = "/" + remainder
+            request.scope["path"] = remainder
+            break
+    return await call_next(request)
+
 # Include API router both with /api prefix and without /api prefix
 # (to support both standard routing and serverless rewrites where /api might be stripped)
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router)
 
 @app.get("/api")
 @app.get("/api/")
